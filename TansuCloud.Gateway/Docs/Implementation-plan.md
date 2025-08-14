@@ -69,15 +69,19 @@ This plan prioritizes foundations, security, and observability, then delivers co
 
 ## Phase 4 — Storage service (Week 9–10)
 
-- **Objectives:** Efficient, safe storage with optimization.
-- **Scope:** Signed URLs, Brotli/WebP, metadata indexing, post‑upload jobs.
+- **Objectives:** Efficient, safe, scalable storage with optimization.
+- **Scope:** Presigned URLs via MinIO (S3‑compatible), Brotli/WebP, metadata indexing, post‑upload jobs.
 - **Tasks:**
-  - Endpoints: sign upload/download, list objects, get metadata.
-  - Optimization pipeline (streaming, chunked uploads).
+  - Integrate MinIO Docker (dev) and configure buckets/policies.
+  - Endpoints: presign upload/download, list objects, get metadata.
+  - Optimization pipeline (streaming, chunked uploads; Brotli compression; image resize/format to WebP/AVIF as feasible).
   - Events: `ObjectUploaded`, `ObjectReady`.
-- **Deliverables:** Storage browser in Dashboard; compression stats.
+- **Deliverables:** Storage browser in Dashboard; compression/optimization stats.
 - **Acceptance:** 1–5 GB uploads succeed; optimizations recorded; access controls enforced by tenant.
-- **Risks/Mitigations:** Large file memory use → stream/pipe; resumable uploads.
+- **Risks/Mitigations:**
+  - Large file memory use → stream/pipe; resumable uploads.
+  - Signed URL misuse → short TTLs, content‑type/size constraints, one‑time tokens.
+  - Scalability → document MinIO clustering/gateway options for production.
 
 ---
 
