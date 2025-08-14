@@ -1,0 +1,6 @@
+services:
+  tansucloud.gateway:
+    image: ${DOCKER_REGISTRY-}tansucloudgateway
+    build:
+      context: .
+      dockerfile: TansuCloud.Gateway/Dockerfile
