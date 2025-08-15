@@ -8,7 +8,7 @@ This plan prioritizes foundations, security, and observability, then delivers co
 
 ---
 
-## Phase 0 — Foundations and repo (Week 1–2)
+## Phase 0 — Foundations and repo
 
 - **Objectives:** Monorepo, build/test/compose, baseline observability, coding standards.
 - **Scope:**
@@ -26,7 +26,7 @@ This plan prioritizes foundations, security, and observability, then delivers co
 
 ---
 
-## Phase 1 — Identity and tenancy (Week 3–4)
+## Phase 1 — Identity and tenancy
 
 - **Objectives:** Secure auth, tenant context end‑to‑end.
 - **Scope:** OpenIddict + ASP.NET Identity, tenant resolver (subdomain/header), RBAC (Admin/Dev/Viewer).
@@ -40,7 +40,7 @@ This plan prioritizes foundations, security, and observability, then delivers co
 
 ---
 
-## Phase 2 — Gateway, BFF, and observability (Week 5)
+## Phase 2 — Gateway, BFF, and observability
 
 - **Objectives:** Single entrypoint; aggregated UI backend; metrics visible.
 - **Scope:** YARP routes; BFF endpoints (`/me`, `/tenants/current`, activity feed); Prometheus exporters wired.
@@ -53,7 +53,7 @@ This plan prioritizes foundations, security, and observability, then delivers co
 
 ---
 
-## Phase 3 — Workflow engine MVP (Week 6–8)
+## Phase 3 — Workflow engine MVP
 
 - **Objectives:** Durable, observable workflows.
 - **Scope:** MassTransit over RabbitMQ; saga state in Postgres (via PgBouncer); outbox; idempotency.
@@ -67,12 +67,12 @@ This plan prioritizes foundations, security, and observability, then delivers co
 
 ---
 
-## Phase 4 — Storage service (Week 9–10)
+## Phase 4 — Storage service
 
 - **Objectives:** Efficient, safe, scalable storage with optimization.
 - **Scope:** Presigned URLs via MinIO (S3‑compatible), Brotli/WebP, metadata indexing, post‑upload jobs.
 - **Tasks:**
-  - Integrate MinIO Docker (dev) and configure buckets/policies.
+  - Integrate MinIO Docker and configure buckets/policies.
   - Endpoints: presign upload/download, list objects, get metadata.
   - Optimization pipeline (streaming, chunked uploads; Brotli compression; image resize/format to WebP/AVIF as feasible).
   - Events: `ObjectUploaded`, `ObjectReady`.
@@ -85,7 +85,7 @@ This plan prioritizes foundations, security, and observability, then delivers co
 
 ---
 
-## Phase 5 — Vector service (Week 11–12)
+## Phase 5 — Vector service
 
 - **Objectives:** Useful semantic search.
 - **Scope:** Collections, embeddings upsert, top‑K search with filters; Qdrant integration.
@@ -98,7 +98,7 @@ This plan prioritizes foundations, security, and observability, then delivers co
 
 ---
 
-## Phase 6 — Dashboard UX (Week 13–15)
+## Phase 6 — Dashboard UX
 
 - **Objectives:** Cohesive, role‑aware UI.
 - **Scope:** MudBlazor layout; modules for Users, Workflows, Storage, Vector, Reports.
@@ -111,7 +111,7 @@ This plan prioritizes foundations, security, and observability, then delivers co
 
 ---
 
-## Phase 7 — SDKs and CLI (Week 16–17)
+## Phase 7 — SDKs and CLI
 
 - **Objectives:** First‑class developer experience.
 - **Scope:** NuGet SDKs (Auth/Workflow/Storage/Vector); CLI for tenants, keys, workflows.
@@ -124,7 +124,7 @@ This plan prioritizes foundations, security, and observability, then delivers co
 
 ---
 
-## Phase 8 — Hardening and beta (Week 18–21)
+## Phase 8 — Hardening and beta
 
 - **Objectives:** Reliability, performance, and safety.
 - **Scope:** Load tests, chaos tests, backup/restore, security review.
