@@ -1,0 +1,46 @@
+# See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
+
+# ---------- Base runtime (chiseled, non-root) ----------
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble-chiseled AS base
+WORKDIR /app
+# Expose only HTTP unless you terminate TLS in-container
+EXPOSE 8080
+# Secure defaults for runtime
+ENV ASPNETCORE_URLS=http://+:8080 \
+    DOTNET_EnableDiagnostics=0
+
+# ---------- Build stage ----------
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+
+# Copy csproj and restore as distinct layers for better cache utilization
+COPY ["TansuCloud.Gateway/TansuCloud.Gateway.csproj", "TansuCloud.Gateway/"]
+RUN dotnet restore "TansuCloud.Gateway/TansuCloud.Gateway.csproj"
+
+# Copy the remaining source
+COPY . .
+WORKDIR "/src/TansuCloud.Gateway"
+
+# Optional: build (publish below is sufficient, but this can aid VS cache)
+RUN dotnet build "./TansuCloud.Gateway.csproj" -c $BUILD_CONFIGURATION -o /app/build --no-restore
+
+# ---------- Publish stage ----------
+FROM build AS publish
+ARG BUILD_CONFIGURATION=Release
+RUN dotnet publish "./TansuCloud.Gateway.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false --no-restore
+
+# ---------- Final image ----------
+FROM base AS final
+# OCI labels for provenance
+ARG GIT_COMMIT=unknown
+LABEL org.opencontainers.image.title="TansuCloud Gateway" \
+      org.opencontainers.image.description="YARP-based API Gateway for TansuCloud" \
+      org.opencontainers.image.source="https://github.com/MusaGursoy/TansuCloud" \
+      org.opencontainers.image.revision="$GIT_COMMIT"
+
+WORKDIR /app
+COPY --from=publish /app/publish .
+
+# Chiseled images run as non-root by default; no shell/package manager included
+ENTRYPOINT ["dotnet", "TansuCloud.Gateway.dll"]

@@ -1,0 +1,34 @@
+{
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "NPGSQL__HOST": "localhost",
+        "NPGSQL__PORT": "5432",
+        "NPGSQL__DATABASE": "tansucloud",
+        "NPGSQL__USERNAME": "app_user",
+        "NPGSQL__PASSWORD": "app_user_password"
+      },
+      "dotnetRunMessages": true,
+      "applicationUrl": "http://localhost:8081"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker",
+      "launchBrowser": true,
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
+      "environmentVariables": {
+        "ASPNETCORE_HTTP_PORTS": "8080",
+        "NPGSQL__HOST": "host.docker.internal",
+        "NPGSQL__PORT": "5432",
+        "NPGSQL__DATABASE": "tansucloud",
+        "NPGSQL__USERNAME": "app_user",
+        "NPGSQL__PASSWORD": "app_user_password"
+      },
+      "publishAllPorts": true,
+      "useSSL": false
+    }
+  },
+  "$schema": "https://json.schemastore.org/launchsettings.json"
+}

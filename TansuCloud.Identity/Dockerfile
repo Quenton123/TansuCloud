@@ -1,4 +1,4 @@
- # syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.7
 # See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
 # Runtime stage (used by VS fast mode and production)
@@ -15,9 +15,10 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 # restore with cache (requires BuildKit)
-COPY ["TansuCloud.Gateway.csproj", "."]
+COPY ["TansuCloud.Identity.csproj", "."]
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet restore "./TansuCloud.Gateway.csproj" -p:ContinuousIntegrationBuild=true
+    --mount=type=cache,id=dotnetobj,target=/src/obj \
+    dotnet restore "./TansuCloud.Identity.csproj" -p:ContinuousIntegrationBuild=true
 
 # copy the rest of the sources
 COPY . .
@@ -25,16 +26,16 @@ COPY . .
 # Publish directly (build is implied) using cache for packages and intermediate outputs
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=dotnetobj,target=/src/obj \
-    dotnet publish "./TansuCloud.Gateway.csproj" -c $BUILD_CONFIGURATION -o /app/publish \
-      -p:UseAppHost=false -p:ContinuousIntegrationBuild=true -p:PublishReadyToRun=true --no-restore
+    dotnet publish "./TansuCloud.Identity.csproj" -c $BUILD_CONFIGURATION -o /app/publish \
+      -p:UseAppHost=false -p:ContinuousIntegrationBuild=true --no-restore
 
 # Final stage
 FROM base AS final
 ARG BUILD_VERSION=unknown
 ARG BUILD_REVISION=unknown
 ARG BUILD_CREATED
-LABEL org.opencontainers.image.title="TansuCloud Gateway" \
-      org.opencontainers.image.description="YARP API Gateway for Tansu.cloud (tenant routing, JWT validation, rate limiting)" \
+LABEL org.opencontainers.image.title="TansuCloud Identity" \
+      org.opencontainers.image.description="OpenIddict-based Identity provider for Tansu.cloud" \
       org.opencontainers.image.source="https://github.com/MusaGursoy/TansuCloud" \
       org.opencontainers.image.url="https://github.com/MusaGursoy/TansuCloud" \
       org.opencontainers.image.documentation="https://github.com/MusaGursoy/TansuCloud" \
@@ -45,4 +46,4 @@ LABEL org.opencontainers.image.title="TansuCloud Gateway" \
       org.opencontainers.image.licenses="AGPL-3.0"
 WORKDIR /app
 COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet", "TansuCloud.Gateway.dll"]
+ENTRYPOINT ["dotnet", "TansuCloud.Identity.dll"]

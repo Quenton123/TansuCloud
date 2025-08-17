@@ -28,3 +28,12 @@ README.md
 !.git/config
 !.git/packed-refs
 !.git/refs/heads/**
+
+# Additional ignores
+.env*
+**/.DS_Store
+**/*.suo
+**/*.rsuser
+artifacts/
+**/appsettings.*.json
+**/secrets.json

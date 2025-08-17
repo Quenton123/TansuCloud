@@ -175,7 +175,7 @@ app.Run(); // End of Method Main
 
 ### Connection string (PgBouncer‑safe)
 ```text
-Host=pgbouncer;Port=6432;Database=tansu;Username=app_user;Password=***;
+Host=pgbouncer;Port=6432;Database=tansucloud;Username=app_user;Password=***;
 Pooling=true;Maximum Pool Size=50;Tcp Keepalive=true;No Reset On Close=true;
 Multiplexing=true;Enlist=false;Auto Prepare Min Usages=0;Max Auto Prepare=0
 ```

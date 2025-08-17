@@ -1,0 +1,54 @@
+# For more info on HTTP files go to https://aka.ms/vs/httpfile
+
+### OIDC discovery (via Gateway)
+GET http://localhost:8080/.well-known/openid-configuration
+
+### JWKS (public keys)
+# Note: Use the jwks_uri from discovery (/.well-known/jwks)
+GET http://localhost:8080/.well-known/jwks
+
+### Get access token — Client Credentials (service-to-service)
+# Note: Use this for non-user calls. Token has no user/role; set X-Tenant-Id yourself when calling downstream.
+POST http://localhost:8080/connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=svc-gateway&client_secret=svc_secret&grant_type=client_credentials&scope=openid
+
+### Get access token — Authorization Code + PKCE (user login)
+# Steps:
+# 1) Open this authorize URL in a browser (after logging in or using /dev/login below) and approve consent.
+#    http://localhost:8080/connect/authorize?client_id=dashboard&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fsignin-oidc&response_type=code&scope=openid%20profile%20email%20roles%20offline_access&code_challenge_method=S256&code_challenge=<YOUR_CODE_CHALLENGE>
+# 2) Copy the `code` query string returned to redirect URI.
+# 3) Exchange code for tokens below (paste the code and the original code_verifier):
+POST http://localhost:8080/connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=dashboard&client_secret=dev_secret&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fsignin-oidc&code={{auth_code}}&code_verifier={{code_verifier}}
+
+### (Dev only, if enabled) Get access token — Password grant
+# This may be disabled. Prefer Authorization Code + PKCE.
+POST http://localhost:8080/connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=dashboard&client_secret=dev_secret&grant_type=password&username=admin@local&password=Pass123$!&scope=openid%20profile%20email%20roles%20offline_access
+
+### RBAC — Call protected endpoint through Gateway (requires user token with Admin role)
+GET http://localhost:8080/admin/ping
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjRFNDE2RDc2REUzQTY3ODcxODM1MDlBRjE0NjQ0OUM2OEE2NzhCMjMiLCJ4NXQiOiJUa0Z0ZHQ0Nlo0Y1lOUW12RkdSSnhvcG5peU0iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwOi8vdGFuc3VjbG91ZC5pZGVudGl0eTo4MDgwLyIsImV4cCI6MTc1NTM3OTU3NiwiaWF0IjoxNzU1Mzc1OTc2LCJzY29wZSI6Im9wZW5pZCIsImp0aSI6Ijg5N2I1YThiLTg5NzctNDA3NS1hMzkwLTExZjdjZTM1YmFlNCIsInN1YiI6InN2Yy1nYXRld2F5Iiwib2lfcHJzdCI6InN2Yy1nYXRld2F5IiwiY2xpZW50X2lkIjoic3ZjLWdhdGV3YXkiLCJvaV90a25faWQiOiI0NjE1OWYyNi1iZTFkLTRiZTUtYWYwYy0zNmM5MWFhNGI0NWUifQ.TnUndV_9QYyiZuYLsM3P-6Ho8luNRGI9aYK0aeCzIOAcDLlZ8BVL0BD6jAq3wBg9FlpG2qCg5nTyjrwdkMjcfLfgaZSq3Y_5W4G2HOck_cFZvNpaC-6A6eJ4IRx12n4ACg4fIZYaew785aK_E_8Ps28S4wdZHmq44LpD5Rl5vhAjZucgLaLI67gwp_j9vcQcjPjtrgiFEnRFRzPNpinnR9K0a4yumnRaCIp74T-grMFx1T0Bn6LRXkaYPuggP3T0QGgFwY3K7rdCttNjTSKgkrVlWqoAHA81EG_2N54kZpHgDdKuZysI_1-KhysqJEX68bhTqQJJnIDE4j5mJp1JAA
+
+### Verify X-Tenant-Id propagation (with user token)
+GET http://localhost:8080/echo/tenant-header
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjRFNDE2RDc2REUzQTY3ODcxODM1MDlBRjE0NjQ0OUM2OEE2NzhCMjMiLCJ4NXQiOiJUa0Z0ZHQ0Nlo0Y1lOUW12RkdSSnhvcG5peU0iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwOi8vdGFuc3VjbG91ZC5pZGVudGl0eTo4MDgwLyIsImV4cCI6MTc1NTM3OTU3NiwiaWF0IjoxNzU1Mzc1OTc2LCJzY29wZSI6Im9wZW5pZCIsImp0aSI6Ijg5N2I1YThiLTg5NzctNDA3NS1hMzkwLTExZjdjZTM1YmFlNCIsInN1YiI6InN2Yy1nYXRld2F5Iiwib2lfcHJzdCI6InN2Yy1nYXRld2F5IiwiY2xpZW50X2lkIjoic3ZjLWdhdGV3YXkiLCJvaV90a25faWQiOiI0NjE1OWYyNi1iZTFkLTRiZTUtYWYwYy0zNmM5MWFhNGI0NWUifQ.TnUndV_9QYyiZuYLsM3P-6Ho8luNRGI9aYK0aeCzIOAcDLlZ8BVL0BD6jAq3wBg9FlpG2qCg5nTyjrwdkMjcfLfgaZSq3Y_5W4G2HOck_cFZvNpaC-6A6eJ4IRx12n4ACg4fIZYaew785aK_E_8Ps28S4wdZHmq44LpD5Rl5vhAjZucgLaLI67gwp_j9vcQcjPjtrgiFEnRFRzPNpinnR9K0a4yumnRaCIp74T-grMFx1T0Bn6LRXkaYPuggP3T0QGgFwY3K7rdCttNjTSKgkrVlWqoAHA81EG_2N54kZpHgDdKuZysI_1-KhysqJEX68bhTqQJJnIDE4j5mJp1JAA
+### Verify service-to-service call (client credentials): must set tenant header explicitly
+GET http://localhost:8080/echo/tenant-header
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjRFNDE2RDc2REUzQTY3ODcxODM1MDlBRjE0NjQ0OUM2OEE2NzhCMjMiLCJ4NXQiOiJUa0Z0ZHQ0Nlo0Y1lOUW12RkdSSnhvcG5peU0iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwOi8vdGFuc3VjbG91ZC5pZGVudGl0eTo4MDgwLyIsImV4cCI6MTc1NTM3OTU3NiwiaWF0IjoxNzU1Mzc1OTc2LCJzY29wZSI6Im9wZW5pZCIsImp0aSI6Ijg5N2I1YThiLTg5NzctNDA3NS1hMzkwLTExZjdjZTM1YmFlNCIsInN1YiI6InN2Yy1nYXRld2F5Iiwib2lfcHJzdCI6InN2Yy1nYXRld2F5IiwiY2xpZW50X2lkIjoic3ZjLWdhdGV3YXkiLCJvaV90a25faWQiOiI0NjE1OWYyNi1iZTFkLTRiZTUtYWYwYy0zNmM5MWFhNGI0NWUifQ.TnUndV_9QYyiZuYLsM3P-6Ho8luNRGI9aYK0aeCzIOAcDLlZ8BVL0BD6jAq3wBg9FlpG2qCg5nTyjrwdkMjcfLfgaZSq3Y_5W4G2HOck_cFZvNpaC-6A6eJ4IRx12n4ACg4fIZYaew785aK_E_8Ps28S4wdZHmq44LpD5Rl5vhAjZucgLaLI67gwp_j9vcQcjPjtrgiFEnRFRzPNpinnR9K0a4yumnRaCIp74T-grMFx1T0Bn6LRXkaYPuggP3T0QGgFwY3K7rdCttNjTSKgkrVlWqoAHA81EG_2N54kZpHgDdKuZysI_1-KhysqJEX68bhTqQJJnIDE4j5mJp1JAA
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+### (Optional) Dev cookie sign-in (if calling Identity endpoints directly)
+# POST http://localhost:8081/dev/login
+
+### (Optional) Verify current user (cookie-based, direct to Identity)
+# GET http://localhost:8081/auth/me
+
+### (Optional) Verify tenant info (cookie-based, direct to Identity)
+# GET http://localhost:8081/tenants

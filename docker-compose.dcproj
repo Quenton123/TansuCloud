@@ -10,10 +10,20 @@
     <DockerServiceName>tansucloud.gateway</DockerServiceName>
   </PropertyGroup>
   <ItemGroup>
+    <None Include=".env" />
+    <None Include=".env.example" />
+    <None Include="db\init\00-init.sql" />
     <None Include="docker-compose.override.yml">
       <DependentUpon>docker-compose.yml</DependentUpon>
     </None>
     <None Include="docker-compose.yml" />
     <None Include=".dockerignore" />
+    <None Include="grafana\dashboards\gateway-overview.json" />
+    <None Include="grafana\provisioning\dashboards\dashboards.yaml" />
+    <None Include="grafana\provisioning\datasources\prometheus.yaml" />
+    <None Include="prometheus\prometheus.yml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="pgbouncer\" />
   </ItemGroup>
 </Project>
