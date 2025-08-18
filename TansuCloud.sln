@@ -9,6 +9,10 @@ Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-co
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TansuCloud.Identity", "TansuCloud.Identity\TansuCloud.Identity.csproj", "{E8A7FBA5-E2C2-4ED3-93AC-672CB6969F8E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TansuCloud.Hub", "TansuCloud.Hub\TansuCloud.Hub\TansuCloud.Hub.csproj", "{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TansuCloud.Hub.Client", "TansuCloud.Hub\TansuCloud.Hub.Client\TansuCloud.Hub.Client.csproj", "{157E199D-4089-4B68-87D7-1FF6E38BF45F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,8 +59,35 @@ Global
 		{E8A7FBA5-E2C2-4ED3-93AC-672CB6969F8E}.Release|x64.Build.0 = Release|Any CPU
 		{E8A7FBA5-E2C2-4ED3-93AC-672CB6969F8E}.Release|x86.ActiveCfg = Release|Any CPU
 		{E8A7FBA5-E2C2-4ED3-93AC-672CB6969F8E}.Release|x86.Build.0 = Release|Any CPU
+		{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}.Debug|x64.Build.0 = Debug|Any CPU
+		{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}.Debug|x86.Build.0 = Debug|Any CPU
+		{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}.Release|x64.ActiveCfg = Release|Any CPU
+		{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}.Release|x64.Build.0 = Release|Any CPU
+		{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}.Release|x86.ActiveCfg = Release|Any CPU
+		{82A387D1-D5EA-42F8-A3A2-7BCF285E0DE3}.Release|x86.Build.0 = Release|Any CPU
+		{157E199D-4089-4B68-87D7-1FF6E38BF45F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{157E199D-4089-4B68-87D7-1FF6E38BF45F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{157E199D-4089-4B68-87D7-1FF6E38BF45F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{157E199D-4089-4B68-87D7-1FF6E38BF45F}.Debug|x64.Build.0 = Debug|Any CPU
+		{157E199D-4089-4B68-87D7-1FF6E38BF45F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{157E199D-4089-4B68-87D7-1FF6E38BF45F}.Debug|x86.Build.0 = Debug|Any CPU
+		{157E199D-4089-4B68-87D7-1FF6E38BF45F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{157E199D-4089-4B68-87D7-1FF6E38BF45F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{157E199D-4089-4B68-87D7-1FF6E38BF45F}.Release|x64.ActiveCfg = Release|Any CPU
+		{157E199D-4089-4B68-87D7-1FF6E38BF45F}.Release|x64.Build.0 = Release|Any CPU
+		{157E199D-4089-4B68-87D7-1FF6E38BF45F}.Release|x86.ActiveCfg = Release|Any CPU
+		{157E199D-4089-4B68-87D7-1FF6E38BF45F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0385DBC7-B66A-4797-80B4-C400CEFBB4C8}
 	EndGlobalSection
 EndGlobal

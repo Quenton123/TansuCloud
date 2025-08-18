@@ -8,6 +8,23 @@ Audience:
 
 ---
 
+## How a new tenant signs up
+
+A tenant represents an organization (for example, a team, a company, or a project space). Creating a tenant is the first step before inviting people.
+
+Typical steps:
+- Go to the Dashboard home page and choose Create a new tenant.
+- Enter the tenant name and an optional public subdomain (for example, acme.tansu.cloud). You can connect a custom domain later.
+- Create the first administrator account by signing in on the hosted page using email and password or an external Identity Provider (for example, Google or Microsoft). Email verification is required.
+- Confirm the plan (free or paid) and, if required, add billing details. This can be skipped in development environments.
+- After confirmation, the first administrator is signed in to the new tenant and can invite other people and register applications.
+
+Notes
+- The first person who creates the tenant becomes an Administrator in that tenant.
+- Single Sign‑On (SSO) via an external Identity Provider can be connected after the tenant is created.
+
+---
+
 ## 1) How a new person becomes a member of a tenant
 
 There are three supported ways to add people to a tenant.
@@ -21,7 +38,7 @@ There are three supported ways to add people to a tenant.
 2. Self‑service sign‑up (optional, per tenant)
    - A tenant can allow self‑registration under constraints (for example, only email domains on an allow list or an invite code).
    - A new person visits the sign‑up page, enters their email, verifies it, and sets a password.
-   - The account starts in Pending state until an administrator approves it or is auto‑approved based on tenant policy. Rate limiting and anti‑automation checks (for example, CAPTCHA) may be enabled.
+   - The account starts in Pending state until an administrator approves it or is auto‑approved based on tenant policy. Rate limiting and anti‑automation checks (for example, Completely Automated Public Turing test to tell Computers and Humans Apart (CAPTCHA)) may be enabled.
 
 3. External Single Sign‑On (SSO) via an external Identity Provider (IdP) (optional, per tenant)
    - A tenant administrator connects an external Identity Provider such as Google, Microsoft, GitHub, or a corporate OpenID Connect provider.
@@ -102,3 +119,4 @@ Important
 - Role‑Based Access Control (RBAC): An authorization model where permissions are assigned to roles (for example, Administrator), and roles are assigned to users.
 - Client Credentials: An OAuth 2.0 flow for server‑to‑server calls using an application’s own credentials.
 - Multi‑Factor Authentication (MFA): A security mechanism requiring more than one method of authentication (for example, password and code).
+- Completely Automated Public Turing test to tell Computers and Humans Apart (CAPTCHA): A challenge‑response test used to determine whether a user is human.

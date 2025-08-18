@@ -4,7 +4,8 @@
       "commandName": "DockerCompose",
       "commandVersion": "1.0",
       "serviceActions": {
-        "tansucloud.gateway": "StartDebugging"
+        "tansucloud.gateway": "StartDebugging",
+        "tansucloud.hub": "StartDebugging"
       }
     }
   }

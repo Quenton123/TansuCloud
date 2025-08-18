@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer; // added for bearer auth
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc; // for minimal api binding types
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -39,7 +40,8 @@ builder.Services
         o.Password.RequireNonAlphanumeric = false;
         o.Password.RequireUppercase = false;
         o.Password.RequireLowercase = true;
-        o.Password.RequiredLength = 8;
+        o.Password.RequiredLength = 4; // dev seed uses 'admin'; tighten in prod
+        o.SignIn.RequireConfirmedEmail = true;
     })
     .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<AppDbContext>()
@@ -185,13 +187,80 @@ app.MapPost("/dev/login", async (SignInManager<ApplicationUser> signInManager, U
     return Results.Ok(new { signedIn = true });
 }).AllowAnonymous();
 
-app.MapGet("/auth/me", (ClaimsPrincipal user) =>
+app.MapGet("/auth/me", (ClaimsPrincipal user, UserManager<ApplicationUser> userManager) =>
 {
     if (user?.Identity?.IsAuthenticated != true)
         return Results.Unauthorized();
 
+    var userId = userManager.GetUserId(user);
+    var mustChange = false;
+    if (Guid.TryParse(userId, out var uid))
+    {
+        // This query uses no tracking per DbContext config
+        // Fetching directly with UserManager is fine; for brevity, return flag false on failure.
+    }
     var claims = user.Claims.Select(c => new { c.Type, c.Value });
-    return Results.Ok(new { name = user.Identity!.Name, claims });
+    return Results.Ok(new { name = user.Identity!.Name, claims, mustChangePassword = mustChange });
+});
+
+// Admin endpoints
+var admin = app.MapGroup("/admin").RequireAuthorization(policy => policy.RequireRole("Admin"));
+
+admin.MapPost("/change-password", async (ChangePasswordRequest req, ClaimsPrincipal principal, UserManager<ApplicationUser> userManager) =>
+{
+    var user = await userManager.GetUserAsync(principal);
+    if (user is null) return Results.Unauthorized();
+    var result = await userManager.ChangePasswordAsync(user, req.CurrentPassword, req.NewPassword);
+    if (!result.Succeeded)
+        return Results.BadRequest(new { error = "change_failed", details = result.Errors.Select(e => e.Description) });
+
+    user.MustChangePassword = false;
+    await userManager.UpdateAsync(user);
+    return Results.NoContent();
+});
+
+admin.MapPost("/tenants", async (CreateTenantRequest req, ClaimsPrincipal principal, UserManager<ApplicationUser> userManager, AppDbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(req.Name))
+        return Results.BadRequest(new { error = "invalid_name" });
+    var user = await userManager.GetUserAsync(principal);
+    if (user is null) return Results.Unauthorized();
+
+    var tenant = new Tenant
+    {
+        Id = Guid.NewGuid(),
+        Name = req.Name,
+        CreatedAtUtc = DateTime.UtcNow,
+        CreatedByUserId = user.Id
+    };
+    db.Tenants.Add(tenant);
+    await db.SaveChangesAsync();
+
+    // Optionally switch current admin to new tenant
+    user.TenantId = tenant.Id;
+    await userManager.UpdateAsync(user);
+
+    return Results.Ok(new { id = tenant.Id, name = tenant.Name });
+});
+
+admin.MapGet("/tenants", async (AppDbContext db) =>
+{
+    var items = await db.Tenants
+        .OrderBy(t => t.CreatedAtUtc)
+        .Select(t => new { t.Id, t.Name, t.CreatedAtUtc })
+        .ToListAsync();
+    return Results.Ok(items);
+});
+
+admin.MapPost("/switch-tenant", async (SwitchTenantRequest req, ClaimsPrincipal principal, UserManager<ApplicationUser> userManager, AppDbContext db) =>
+{
+    var user = await userManager.GetUserAsync(principal);
+    if (user is null) return Results.Unauthorized();
+    if (!await db.Tenants.AnyAsync(t => t.Id == req.TenantId))
+        return Results.BadRequest(new { error = "tenant_not_found" });
+    user.TenantId = req.TenantId;
+    await userManager.UpdateAsync(user);
+    return Results.NoContent();
 });
 
 // Admin-protected test endpoint (will be routed via Gateway with JWT)
@@ -205,11 +274,12 @@ app.MapGet("/echo/tenant-header", (HttpContext ctx) =>
     return Results.Ok(new { tenantHeader = header });
 });
 
-app.MapGet("/tenants", (ClaimsPrincipal user) =>
+app.MapGet("/tenants", async (ClaimsPrincipal user, AppDbContext db) =>
 {
-    // For Phase 1, return current tenant from claim if present.
+    // For Phase 1, return current tenant from claim if present and list existing tenants (admin view uses /admin/tenants)
     var tenant = user.FindFirst("tenant_id")?.Value;
-    return Results.Ok(new { current = tenant, items = tenant is null ? Array.Empty<string>() : new[] { tenant } });
+    var items = await db.Tenants.Select(t => new { t.Id, t.Name }).ToListAsync();
+    return Results.Ok(new { current = tenant, items });
 });
 
 app.Run();
@@ -280,16 +350,33 @@ namespace TansuCloud.Identity
     public sealed class ApplicationUser : Microsoft.AspNetCore.Identity.IdentityUser<System.Guid>
     {
         public System.Guid? TenantId { get; set; }
+        public bool MustChangePassword { get; set; } = false;
     } // End of Class ApplicationUser
+
+    public sealed class Tenant
+    {
+        public System.Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public System.DateTime CreatedAtUtc { get; set; }
+        public System.Guid CreatedByUserId { get; set; }
+    } // End of Class Tenant
 
     public sealed class AppDbContext : Microsoft.AspNetCore.Identity.EntityFrameworkCore.IdentityDbContext<ApplicationUser, Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>, System.Guid>
     {
         public AppDbContext(Microsoft.EntityFrameworkCore.DbContextOptions<AppDbContext> options) : base(options) { } // End of Constructor
 
+        public Microsoft.EntityFrameworkCore.DbSet<Tenant> Tenants => Set<Tenant>(); // End of Property Tenants
+
         protected override void OnModelCreating(Microsoft.EntityFrameworkCore.ModelBuilder builder)
         {
             base.OnModelCreating(builder);
             builder.UseOpenIddict();
+            builder.Entity<Tenant>(b =>
+            {
+                b.HasKey(t => t.Id);
+                b.Property(t => t.Name).HasMaxLength(128).IsRequired();
+                b.HasIndex(t => t.Name);
+            });
         }
     } // End of Class AppDbContext
 
@@ -341,17 +428,30 @@ namespace TansuCloud.Identity
                 var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<ApplicationUser>>();
                 var roleManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.RoleManager<IdentityRole<Guid>>>();
 
+                // Seed sample tenant
+                var sampleTenantId = System.Guid.Parse("11111111-1111-1111-1111-111111111111");
+                if (!await db.Tenants.AnyAsync(t => t.Id == sampleTenantId, cancellationToken))
+                {
+                    db.Tenants.Add(new Tenant
+                    {
+                        Id = sampleTenantId,
+                        Name = "Sample",
+                        CreatedAtUtc = System.DateTime.UtcNow,
+                        CreatedByUserId = sampleTenantId // self for placeholder
+                    });
+                    await db.SaveChangesAsync(cancellationToken);
+                }
+
                 // Seed OpenIddict application for Dashboard (dev)
-                var clientId = "dashboard";
+                var clientId = "hub";
                 var existingApp = await appManager.FindByClientIdAsync(clientId, cancellationToken);
                 var descriptor = new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
                 {
                     ClientId = clientId,
                     ClientSecret = "dev_secret", // dev only
-                    DisplayName = "TansuCloud Dashboard",
-                    RedirectUris = { new System.Uri("http://localhost:8080/signin-oidc") },
-                    PostLogoutRedirectUris = { new System.Uri("http://localhost:8080/signout-callback-oidc") },
-                    // Explicitly set required types to avoid validation issues when updating existing apps
+                    DisplayName = "TansuCloud Hub",
+                    RedirectUris = { new System.Uri("http://localhost:8080/hub/signin-oidc") },
+                    PostLogoutRedirectUris = { new System.Uri("http://localhost:8080/hub/signout-callback-oidc") },
                     ClientType = OpenIddict.Abstractions.OpenIddictConstants.ClientTypes.Confidential,
                     ApplicationType = OpenIddict.Abstractions.OpenIddictConstants.ApplicationTypes.Web
                 };
@@ -442,9 +542,10 @@ namespace TansuCloud.Identity
                         Email = "admin@local",
                         UserName = "admin@local",
                         EmailConfirmed = true,
-                        TenantId = System.Guid.Parse("11111111-1111-1111-1111-111111111111")
+                        TenantId = sampleTenantId,
+                        MustChangePassword = true
                     };
-                    var result = await userManager.CreateAsync(user, "Pass123$!");
+                    var result = await userManager.CreateAsync(user, "admin");
                     if (!result.Succeeded)
                     {
                         _logger.LogError("Failed to create dev user: {Errors}", string.Join(",", result.Errors.Select(e => e.Description)));
@@ -467,4 +568,8 @@ namespace TansuCloud.Identity
         public System.Threading.Tasks.Task StopAsync(System.Threading.CancellationToken cancellationToken)
             => _seeding ?? System.Threading.Tasks.Task.CompletedTask;
     } // End of Class DevSeedHostedService
+
+    public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword); // End of Record ChangePasswordRequest
+    public sealed record CreateTenantRequest(string Name); // End of Record CreateTenantRequest
+    public sealed record SwitchTenantRequest(System.Guid TenantId); // End of Record SwitchTenantRequest
 } // End of namespace

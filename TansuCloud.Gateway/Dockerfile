@@ -1,4 +1,4 @@
- # syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.7
 # See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
 # Runtime stage (used by VS fast mode and production)
@@ -17,7 +17,8 @@ WORKDIR /src
 # restore with cache (requires BuildKit)
 COPY ["TansuCloud.Gateway.csproj", "."]
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet restore "./TansuCloud.Gateway.csproj" -p:ContinuousIntegrationBuild=true
+    --mount=type=cache,id=dotnetobj,target=/src/obj \
+    dotnet restore "./TansuCloud.Gateway.csproj"
 
 # copy the rest of the sources
 COPY . .
@@ -26,7 +27,7 @@ COPY . .
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=dotnetobj,target=/src/obj \
     dotnet publish "./TansuCloud.Gateway.csproj" -c $BUILD_CONFIGURATION -o /app/publish \
-      -p:UseAppHost=false -p:ContinuousIntegrationBuild=true -p:PublishReadyToRun=true --no-restore
+      -p:UseAppHost=false
 
 # Final stage
 FROM base AS final

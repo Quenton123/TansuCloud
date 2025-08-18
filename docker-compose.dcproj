@@ -23,7 +23,4 @@
     <None Include="grafana\provisioning\datasources\prometheus.yaml" />
     <None Include="prometheus\prometheus.yml" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="pgbouncer\" />
-  </ItemGroup>
 </Project>

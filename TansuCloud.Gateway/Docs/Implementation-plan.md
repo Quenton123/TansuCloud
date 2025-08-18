@@ -49,15 +49,20 @@ This plan prioritizes foundations, security, and observability, then delivers co
 
 - **Objectives:** Secure auth, tenant context end‑to‑end. — Completed
 - **Scope:** OpenIddict + ASP.NET Identity, tenant resolver (subdomain/header), RBAC (Admin/Dev/Visitor). — Completed
+- **Admin UX (TansuCloud.Hub) (seed):** Minimal Admin Dashboard available now to validate flows:
+  - Sign‑in/out wired to Identity (Authorization Code + PKCE)
+  - Tenant overview (current tenant, current user/roles)
+  - Placeholders: Invite user, Applications (client registration)
 - **Tasks:**
   - Token issuance (Authorization Code + PKCE, Client Credentials, Refresh). — Completed
   - Gateway JWT validation; `X-Tenant-Id` propagation and enforcement. — Completed
   - EF Core models (auth schema) with indices. — Completed (Identity + OpenIddict EF; EnsureCreated for dev)
-  - Dashboard login UX using OIDC (server prerequisites ready; UI implemented in Phase 6). — Planned
+  - Dashboard login UX using OIDC (server prerequisites ready; UI implemented in Phase 1 seed and improved every phase). — In progress
 - **Deliverables:**
   - OIDC endpoints for Dashboard login; `/auth/me` and `/tenants` endpoints. — Completed
+  - Minimal Admin UX (TansuCloud.Hub) shell with Tenant overview and placeholders for Invites and Applications. — New
   - test.http to exercise discovery, token, RBAC, and tenant propagation. — Completed
-- **Acceptance:** E2E login using Auth Code + PKCE works against Identity; tenant enforced on protected routes; JWT includes `tenant_id`. — Met
+- **Acceptance:** E2E login using Auth Code + PKCE works against Identity; tenant enforced on protected routes; JWT includes `tenant_id`. Minimal Admin UX (TansuCloud.Hub) loads and shows current tenant and user. — Met
 - **Near‑term priorities (Phase 1 hardening):**
   - Enable refresh token rotation with reuse detection; configure sliding expiration with an absolute max session lifetime.
   - Tighten Gateway JWT validation for non‑dev (ValidateAudience=true; known audiences per service); RequireHttpsMetadata=true outside dev.
@@ -115,12 +120,10 @@ This plan prioritizes foundations, security, and observability, then delivers co
   - Rotate secrets; separate credentials per environment.
   - Scope/role least‑privilege per app; map apps to specific tenant(s).
   - For client_credentials tokens, enforce audience and X‑Tenant‑Id at Gateway (already implemented).
-
 - **Backend work to add:**
   - Identity endpoints for invite creation/acceptance and registration, plus email delivery.
   - Dashboard pages for app registration, user invites, role assignment.
   - Optional per‑tenant external IdP configuration.
-
 - **Notes:** Tenant enforcement added in Gateway middleware; Dashboard UX login flows will be built in Phase 6 using these OIDC capabilities.
 
 ---
@@ -128,6 +131,10 @@ This plan prioritizes foundations, security, and observability, then delivers co
 ## Phase 2 — Gateway, BFF, and observability
 
 - **Objectives:** Single entrypoint; aggregated UI backend; metrics visible; alerting and tracing foundation. — In progress
+- **Admin UX (TansuCloud.Hub) (incremental):**
+  - Applications: register clients (Web app and Client Credentials), show Client Identifier/secret in development
+  - Users: list/search users and view roles; manual invite creation when endpoints land
+  - Health quick panel: Gateway/Identity status and recent errors
 - **Scope:** YARP routes; BFF endpoints (`/me`, `/tenants/current`, activity feed); Prometheus exporters wired; Alertmanager and basic SLO alerts; prepare for cross‑service tracking with OpenTelemetry Collector. — In progress (YARP + metrics wired)
 - **Tasks (detailed):**
   - Correlation and logging
@@ -153,14 +160,16 @@ This plan prioritizes foundations, security, and observability, then delivers co
   - Dashboards
     - Add API dashboards (latency histogram, error rate, request rate), DB dashboards (pool use, waits), RMQ dashboard
     - Provision Grafana alert panels for SLOs
-- **Deliverables:** BFF + SignalR shell; baseline dashboards; Alertmanager + alerting config; OTEL Collector config; DB pooler (PgBouncer or drop‑in) and dashboards.
-- **Acceptance:** Dashboards show P50/95/99 latency, error rates; SignalR handshake succeeds through Gateway; alert rules load without errors; pooler targets are UP and utilized. — Pending
+- **Deliverables:** BFF + SignalR shell; Admin UX (TansuCloud.Hub) pages for Applications and Users (read‑only if needed); baseline dashboards; Alertmanager + alerting config; OTEL Collector config; DB pooler (PgBouncer or drop‑in) and dashboards.
+- **Acceptance:** Dashboards show P50/95/99 latency, error rates; Admin UX (TansuCloud.Hub) can register an application (dev), list users, and display basic health; SignalR handshake succeeds through Gateway; alert rules load without errors; pooler targets are UP and utilized. — Pending
 
 ---
 
 ## Phase 3 — Workflow engine MVP
 
 - **Objectives:** Durable, observable workflows.
+- **Admin UX (TansuCloud.Hub) (incremental):**
+  - Workflows: definitions list (seed), runs list with status, simple run detail with live updates (SignalR)
 - **Scope:** MassTransit over RabbitMQ; saga state in Postgres; outbox; idempotency; realtime UI via BFF/SignalR.
 - **Tasks (detailed):**
   - Contracts and schema
@@ -181,19 +190,16 @@ This plan prioritizes foundations, security, and observability, then delivers co
   - Testing and ops
     - Integration tests for start/cancel; contract tests for endpoints and messages
     - Grafana dashboard: runs started/completed/failed, step duration, DLQ depth
-- **Deliverables:**
-  - Workflow API with endpoints and consumers; EF migrations; outbox configured
-  - BFF event fan‑out via SignalR; dashboards for workflow KPIs
-- **Acceptance:**
-  - Sample workflow runs to completion; DLQ remains empty under nominal load
-  - UI reflects updates within 1s; idempotent start enforced; retries cap failures
-- **Risks/Mitigations:** Event storms → batch/coalesce; long‑running steps → heartbeats/timeouts; exactly‑once semantics → idempotency keys and outbox.
+- **Deliverables:** Workflow API with endpoints and consumers; EF migrations; outbox configured; Admin UX (TansuCloud.Hub) shows workflow definitions and runs; BFF event fan‑out via SignalR; dashboards for workflow KPIs.
+- **Acceptance:** Sample workflow runs to completion; updates visible in Admin UX (TansuCloud.Hub) within 1s; DLQ remains empty under nominal load; idempotent start enforced; retries cap failures.
 
 ---
 
 ## Phase 4 — Storage service
 
 - **Objectives:** Efficient, safe, scalable storage with optimization.
+- **Admin UX (TansuCloud.Hub) (incremental):**
+  - Storage: bucket/object browser; presign tester; object detail panel (sizes, checksum, formats)
 - **Scope:** Presigned URLs via MinIO, Brotli/WebP processing, metadata indexing, events.
 - **Tasks (detailed):**
   - Infra and bootstrap
@@ -215,19 +221,16 @@ This plan prioritizes foundations, security, and observability, then delivers co
     - Metrics: processing duration, failure rate; alerts on backlog age
   - Testing
     - Large file upload scenarios (1–5 GB) with streaming; contract tests for presign
-- **Deliverables:**
-  - Storage API with presign/list/metadata; background optimizer; events ObjectUploaded/ObjectReady
-  - Dashboards for throughput, failure rate, capacity; sample upload flow in Dashboard
-- **Acceptance:**
-  - Large uploads succeed; optimizations recorded; access controls enforced by tenant
-  - Metrics visible; backlog remains within target; processing failures alert
-- **Risks/Mitigations:** Large file memory use → stream/pipe; signed URL misuse → short TTLs and constraints; capacity pressure → document scaling options.
+- **Deliverables:** Storage API with presign/list/metadata; background optimizer; events ObjectUploaded/ObjectReady; Admin UX (TansuCloud.Hub) storage browser and presign tester; dashboards for throughput, failure rate, capacity; sample upload flow in Dashboard.
+- **Acceptance:** Large uploads succeed; presign works via Admin UX (TansuCloud.Hub); optimizations recorded; access controls enforced by tenant; metrics visible; backlog remains within target; processing failures alert.
 
 ---
 
 ## Phase 5 — Vector service
 
 - **Objectives:** Useful semantic search with predictable performance.
+- **Admin UX (TansuCloud.Hub) (incremental):**
+  - Vector: collections list; document upsert tester; top‑K search with filters
 - **Scope:** Collections management, embeddings upsert, top‑K search with filters; Qdrant integration; metadata in Postgres.
 - **Tasks (detailed):**
   - Infra and schema
@@ -245,68 +248,45 @@ This plan prioritizes foundations, security, and observability, then delivers co
     - Metrics: P50/95 latency, QPS, memory, request errors; alerts on latency budget breaches
   - Testing
     - Deterministic test collections; golden queries; latency budget tests
-- **Deliverables:**
-  - Vector API with collections/upsert/search; Postgres meta; Qdrant wired
-  - Dashboards for query latency and load; sample UI console
-- **Acceptance:**
-  - P95 query latency within target under baseline load; consistent results across runs
-  - Idempotent upserts; filters work as specified; dashboards reflect load and latency
-- **Risks/Mitigations:** Payload bloat → minimal payload return; noisy rerank → opt‑in with safeguards; performance drift → capacity guidance and monitoring.
+- **Deliverables:** Vector API with collections/upsert/search; Postgres meta; Qdrant wired; Admin UX (TansuCloud.Hub) vector collections and top‑K tester; dashboards for query latency and load; sample UI console.
+- **Acceptance:** P95 query latency within target under baseline load; consistent results across runs; idempotent upserts; filters work as specified; Admin UX (TansuCloud.Hub) tools operational; dashboards reflect load and latency.
 
 ---
 
-## Phase 6 — Dashboard UX
+## Phase 6 — Dashboard UX (TansuCloud.Hub) (consolidation)
 
-- **Objectives:** Cohesive, role‑aware, tenant‑aware Dashboard that consolidates Users, Workflows, Storage, Vector, and Reports with realtime updates.
-- **Scope:** MudBlazor UI shell, OIDC auth, tenant switcher, role‑based navigation, SignalR realtime, lists/detail views, reports/graphs, accessibility and performance budgets.
+- **Objectives:** Finalize a cohesive, role‑aware, tenant‑aware Admin Dashboard that consolidates Users, Workflows, Storage, Vector, and Reports with realtime updates.
+- **Scope:** Complete and polish Admin UX (TansuCloud.Hub) modules introduced in earlier phases; add reports/graphs, accessibility, performance budgets, and end‑to‑end tests.
 - **Tasks:**
-  - Shell and navigation
-    - [x] App shell with top bar, side nav, breadcrumbs, and responsive layout (MudLayout)
-    - [x] Role‑based navigation filtering (Admin/Dev/Viewer) and feature flags
-    - [x] Tenant switcher component (shows current tenant; switches context and persists selection)
-    - [ ] Global search placeholder and command palette (optional)
   - Authentication and authorization
-    - [ ] OIDC Authorization Code + PKCE sign‑in flow wired to Identity
-    - [ ] Auth guard for protected routes; token refresh; sign‑out
-    - [ ] RBAC on UI actions (buttons/menus) and route groups
+    - OIDC Authorization Code + PKCE sign‑in flow wired to Identity
+    - Auth guard for protected routes; token refresh; sign‑out
+    - RBAC on UI actions (buttons/menus) and route groups
   - Realtime and notifications
-    - [ ] SignalR connection manager with auto‑reconnect and backoff
-    - [ ] Toaster/notification service for workflow/storage/vector events
-    - [ ] Tenant‑scoped SignalR groups and connection rejoin on tenant change
+    - SignalR connection manager with auto‑reconnect and backoff
+    - Toaster/notification service for workflow/storage/vector events
+    - Tenant‑scoped SignalR groups and connection rejoin on tenant change
   - Modules and pages
-    - Users: [ ] List/search/sort; [ ] View/edit user; [ ] Roles assignment; [ ] Invite/reset flows
-    - Workflows: [ ] Definitions list; [ ] Run list with status; [ ] Run detail timeline; [ ] Live logs via SignalR
-    - Storage: [ ] Bucket/object browser; [ ] Presign upload; [ ] Object detail with metadata/optimizations
-    - Vector: [ ] Collections list; [ ] Upsert tester; [ ] Top‑K search with filters; [ ] Rerank preview (optional)
-    - Reports: [ ] Traffic/latency/error rates; [ ] Workflow KPIs; [ ] Storage usage; [ ] Vector load (Grafana panels or embedded charts)
+    - Users: List/search/sort; View/edit user; Roles assignment; Invite/reset flows
+    - Workflows: Definitions list; Run list with status; Run detail timeline; Live logs via SignalR
+    - Storage: Bucket/object browser; Presign upload; Object detail with metadata/optimizations
+    - Vector: Collections list; Upsert tester; Top‑K search with filters; Rerank preview (optional)
+    - Reports: Traffic/latency/error rates; Workflow KPIs; Storage usage; Vector load (Grafana panels or embedded charts)
   - UX quality and resilience
-    - [ ] Empty states, loading skeletons, and retry affordances on all lists
-    - [ ] Error boundaries and ProblemDetails rendering
-    - [ ] Keyboard navigation, focus order, and ARIA labels (WCAG 2.1 AA targets)
-    - [ ] Dark mode and theme tokens (light/dark)
-    - [ ] Virtualized tables for large lists; pagination and filter memory
+    - Empty states, loading skeletons, and retry affordances on all lists
+    - Error boundaries and ProblemDetails rendering
+    - Keyboard navigation, focus order, and ARIA labels (WCAG 2.1 AA targets)
+    - Dark mode and theme tokens (light/dark)
+    - Virtualized tables for large lists; pagination and filter memory
   - Performance and ops
-    - [ ] Lighthouse budgets: TTI < 3.5s on cold start; main thread < 2.0s; bundle size budgets
-    - [ ] Cache API responses where safe; debounce search; lazy‑load heavy modules
-    - [ ] Telemetry: UI perf beacons; log client errors with correlation ID
+    - Lighthouse budgets: TTI < 3.5s on cold start; main thread < 2.0s; bundle size budgets
+    - Cache API responses where safe; debounce search; lazy‑load heavy modules
+    - Telemetry: UI perf beacons; log client errors with correlation ID
   - Testing
-    - [ ] bUnit unit tests for components
-    - [ ] Playwright E2E: login, tenant switch, create workflow run, observe realtime updates, upload object
-- **Deliverables:**
-  - Navigable Dashboard with modules: Users, Workflows, Storage, Vector, Reports
-  - OIDC login/logout; tenant selector; role‑based menus
-  - Live updates via SignalR; toasts for key events
-  - Reports with latency/error/KPI charts; empty states and skeletons
-  - Themes (light/dark), a11y support, and automated tests (bUnit + Playwright)
-- **Acceptance:**
-  - Core tasks in Users/Workflows/Storage/Vector completed within the Dashboard without leaving it
-  - Lighthouse perf budget passes on dev hardware; a11y checks pass (axe/Pa11y)
-  - Realtime updates are visible within 1s of server event under nominal load
-  - RBAC enforced (menus/actions hidden/disabled per role) and tenant switch updates data correctly
-- **Risks/Mitigations:**
-  - Scope creep → Feature flags per module and progressive rollout
-  - Realtime noise → Coalesce updates, rate‑limit toasts, and use incremental rendering
-  - State complexity → Keep state local per module; use cascading context for auth/tenant; avoid global mutable singletons
+    - bUnit unit tests for components
+    - Playwright E2E: login, tenant switch, create workflow run, observe realtime updates, upload object
+- **Deliverables:** A cohesive Admin Dashboard covering Users, Workflows, Storage, Vector, and Reports with live updates; a11y/perf budgets met; automated tests in place.
+- **Acceptance:** Core tasks completed within the Dashboard; Lighthouse budget passes; a11y checks pass; realtime updates visible within 1s; RBAC enforced and tenant switch updates data correctly.
 
 ---
 

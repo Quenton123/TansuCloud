@@ -33,8 +33,10 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = builder.Configuration["Identity:Authority"] ?? "http://tansucloud.identity:8080";
-        options.RequireHttpsMetadata = !isDevelopment;
+        var authority = builder.Configuration["Identity:Authority"] ?? "http://tansucloud.identity:8080";
+        options.Authority = authority;
+        // Allow HTTP metadata when the authority is HTTP (dev/containers)
+        options.RequireHttpsMetadata = !authority.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateAudience = !isDevelopment,
@@ -160,12 +162,22 @@ builder.Services.AddReverseProxy()
 
 var app = builder.Build();
 
-// ProblemDetails + exception handler
-app.UseExceptionHandler();
+// ProblemDetails + exception handler (dev shows detailed errors)
+if (isDevelopment)
+{
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    app.UseExceptionHandler();
+}
 app.UseStatusCodePages();
 
 // Trust X-Forwarded-* when present
 app.UseForwardedHeaders();
+
+// Enable WebSocket proxying (Blazor Server/SignalR)
+app.UseWebSockets();
 
 // Correlation ID middleware (prefer Activity.Id, fall back to GUID)
 app.Use(async (ctx, next) =>
