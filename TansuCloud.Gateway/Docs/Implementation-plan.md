@@ -31,14 +31,14 @@ This plan prioritizes foundations, security, and observability, then delivers co
   - Root `docker-compose.yml` (gateway+prometheus+grafana) and `docker-compose.override.yml` (ports, env) next to `docker-compose.dcproj`. — Completed
   - Optimized multi‑stage Dockerfiles for each service using chiseled runtime and OCI labels. — Completed
   - `prometheus/prometheus.yml` (scrape gateway, identity, etc. as they are added). — Completed
-  - Grafana provisioning under `grafana/provisioning/{datasources,dashboards}/` and dashboard `grafana/dashboards/gateway-overview.json`. — Completed
+  - Grafana provisioning under `grafana/provisioning/{datasources,dashboards}/` and dashboard `grafana/dashboards/gateway-overview.json`. Dashboards are consumed via TansuCloud.Hub; direct Grafana UI is for operators only. — Completed
   - `db/init/00-init.sql` (CREATE DATABASE tansucloud; roles app_user; grants). — Completed
   - `.env.example` and `.gitignore` updated to ignore `.env*`. — Completed
 - **Acceptance:**
   - `docker compose build` builds service images; `docker compose up -d` →
     - Services expose `/health` and `/metrics`. — Completed (Gateway, Identity)
     - Prometheus targets are UP and scraping. — Completed
-    - Grafana reachable at :3000 with Prometheus datasource and Gateway Overview dashboard present. — Completed
+    - Hub shows embedded dashboards under `/hub` (Grafana panels embedded for dev/operators); direct Grafana access is not required for end users. — Completed
   - No hard‑coded secrets in Compose or `.env`. — Completed
 - **Risks/Mitigations:** Version drift → pin tags; healthchecks → use external HTTP checks with chiseled; image bloat → multi‑stage + `.dockerignore`.
 - **Exit criteria:** Above acceptance verified; docs updated. — Completed
@@ -153,15 +153,16 @@ This plan prioritizes foundations, security, and observability, then delivers co
     - Add OpenTelemetry Collector to compose (receivers: otlp, prometheus; exporters: prometheus, debug)
     - Migrate services from prometheus-net (as needed) to OTEL metrics; ensure propagation headers
     - Verify exemplars and labels are consistent (service, route, tenant)
-  - Database pooler
-    - Evaluate PgBouncer drop‑in replacements (e.g., Odyssey, PgCat) vs PgBouncer; select and integrate
-    - Introduce the selected pooler with transaction pooling; update DSNs; set Npgsql Max Auto Prepare=0; tune pool sizes
-    - Dashboards for pool utilization and Postgres wait events; update runbooks accordingly
+  - Database pooler (PgCat)
+    - Add PgCat to compose; configure transaction pooling; one DSN per database.
+    - Internal only: disable TLS between apps → PgCat → Postgres on the Docker network (no certs). Set `SSL Mode=Disable` in client connection strings.
+    - Update connection strings across services to point at PgCat.
+    - Disable prepared statements on clients (Npgsql `Max Auto Prepare=0`); tune pool sizes.
+    - Add dashboards for pool utilization and Postgres wait events; update runbooks accordingly.
   - Dashboards
-    - Add API dashboards (latency histogram, error rate, request rate), DB dashboards (pool use, waits), RMQ dashboard
-    - Provision Grafana alert panels for SLOs
-- **Deliverables:** BFF + SignalR shell; Admin UX (TansuCloud.Hub) pages for Applications and Users (read‑only if needed); baseline dashboards; Alertmanager + alerting config; OTEL Collector config; DB pooler (PgBouncer or drop‑in) and dashboards.
-- **Acceptance:** Dashboards show P50/95/99 latency, error rates; Admin UX (TansuCloud.Hub) can register an application (dev), list users, and display basic health; SignalR handshake succeeds through Gateway; alert rules load without errors; pooler targets are UP and utilized. — Pending
+    - Build dashboards in Grafana but surface them inside TansuCloud.Hub (embedded panels/pages). End users and tenant admins use Hub; direct Grafana access is limited to operators in dev/prod.
+- **Deliverables:** BFF + SignalR shell; Admin UX (TansuCloud.Hub) pages for Applications and Users (read‑only if needed); baseline dashboards embedded in Hub; Alertmanager + alerting config; OTEL Collector config; DB pooler (PgCat) and dashboards.
+- **Acceptance:** Dashboards show P50/95/99 latency, error rates; Admin UX (TansuCloud.Hub) can register an application (dev), list users, display health and dashboards; SignalR handshake succeeds through Gateway; alert rules load without errors; PgCat targets are UP and utilized. — Pending
 
 ---
 
@@ -189,8 +190,8 @@ This plan prioritizes foundations, security, and observability, then delivers co
     - Coalesce frequent updates; throttle to avoid UI spam
   - Testing and ops
     - Integration tests for start/cancel; contract tests for endpoints and messages
-    - Grafana dashboard: runs started/completed/failed, step duration, DLQ depth
-- **Deliverables:** Workflow API with endpoints and consumers; EF migrations; outbox configured; Admin UX (TansuCloud.Hub) shows workflow definitions and runs; BFF event fan‑out via SignalR; dashboards for workflow KPIs.
+    - Grafana dashboard: runs started/completed/failed, step duration, DLQ depth (embedded in Hub)
+- **Deliverables:** Workflow API with endpoints and consumers; EF migrations; outbox configured; Admin UX (TansuCloud.Hub) shows workflow definitions and runs; BFF event fan‑out via SignalR; dashboards for workflow KPIs embedded in Hub.
 - **Acceptance:** Sample workflow runs to completion; updates visible in Admin UX (TansuCloud.Hub) within 1s; DLQ remains empty under nominal load; idempotent start enforced; retries cap failures.
 
 ---
@@ -221,8 +222,8 @@ This plan prioritizes foundations, security, and observability, then delivers co
     - Metrics: processing duration, failure rate; alerts on backlog age
   - Testing
     - Large file upload scenarios (1–5 GB) with streaming; contract tests for presign
-- **Deliverables:** Storage API with presign/list/metadata; background optimizer; events ObjectUploaded/ObjectReady; Admin UX (TansuCloud.Hub) storage browser and presign tester; dashboards for throughput, failure rate, capacity; sample upload flow in Dashboard.
-- **Acceptance:** Large uploads succeed; presign works via Admin UX (TansuCloud.Hub); optimizations recorded; access controls enforced by tenant; metrics visible; backlog remains within target; processing failures alert.
+- **Deliverables:** Storage API with presign/list/metadata; background optimizer; events ObjectUploaded/ObjectReady; Admin UX (TansuCloud.Hub) storage browser and presign tester; dashboards for throughput, failure rate, capacity embedded in Hub; sample upload flow in Dashboard.
+- **Acceptance:** Large uploads succeed; presign works via Admin UX (TansuCloud.Hub); optimizations recorded; access controls enforced by tenant; metrics visible in Hub; backlog remains within target; processing failures alert.
 
 ---
 
@@ -248,7 +249,7 @@ This plan prioritizes foundations, security, and observability, then delivers co
     - Metrics: P50/95 latency, QPS, memory, request errors; alerts on latency budget breaches
   - Testing
     - Deterministic test collections; golden queries; latency budget tests
-- **Deliverables:** Vector API with collections/upsert/search; Postgres meta; Qdrant wired; Admin UX (TansuCloud.Hub) vector collections and top‑K tester; dashboards for query latency and load; sample UI console.
+- **Deliverables:** Vector API with collections/upsert/search; Postgres meta; Qdrant wired; Admin UX (TansuCloud.Hub) vector collections and top‑K tester; dashboards for query latency and load embedded in Hub; sample UI console.
 - **Acceptance:** P95 query latency within target under baseline load; consistent results across runs; idempotent upserts; filters work as specified; Admin UX (TansuCloud.Hub) tools operational; dashboards reflect load and latency.
 
 ---
@@ -271,7 +272,7 @@ This plan prioritizes foundations, security, and observability, then delivers co
     - Workflows: Definitions list; Run list with status; Run detail timeline; Live logs via SignalR
     - Storage: Bucket/object browser; Presign upload; Object detail with metadata/optimizations
     - Vector: Collections list; Upsert tester; Top‑K search with filters; Rerank preview (optional)
-    - Reports: Traffic/latency/error rates; Workflow KPIs; Storage usage; Vector load (Grafana panels or embedded charts)
+    - Reports: Traffic/latency/error rates; workflow/storage/vector KPIs — all dashboards are surfaced inside Hub (embedded Grafana panels or native charts). End users never access Grafana directly.
   - UX quality and resilience
     - Empty states, loading skeletons, and retry affordances on all lists
     - Error boundaries and ProblemDetails rendering
@@ -333,7 +334,7 @@ This plan prioritizes foundations, security, and observability, then delivers co
     - Threat model; secure headers; dependency and image scanning; secret scanning
     - Auth hardening (token lifetimes, refresh rotation); audit logs baseline
   - SLOs and alerts
-    - Define SLOs for availability/latency/DLQ drain time; dashboards and alerting configured
+    - Define SLOs for availability/latency/DLQ drain time; dashboards and alerting configured; dashboards continue to be consumed via Hub.
 - **Deliverables:**
   - Runbooks for backups, restores, incident response; SLO dashboards; security checklist
 - **Acceptance:**
@@ -367,15 +368,15 @@ This plan prioritizes foundations, security, and observability, then delivers co
 ## Cross‑cutting: connection pooling & EF Core
 
 - For now, services connect directly to Postgres. — Completed (dev setup)
-- A connection pooler will be introduced in a later phase (see Phase 2). When in place:
+- A connection pooler will be introduced in Phase 2.
   - **EF Core (Npgsql):**
     - Disable prepared statements: `Max Auto Prepare=0` when using transaction pooling.
     - Pooling on: `Pooling=true; Maximum Pool Size=XX` tuned per service.
     - Multiplexing: On for light queries; validate with pooler mode.
-  - **Pooler (PgBouncer or drop‑in replacement such as Odyssey/PgCat):**
-    - One DSN per database; consider separate pools per high‑traffic service.
-    - Monitor with pooler stats; alerts on pool saturation.
-    - Evaluate alternatives for features (sharding awareness, auth backends) while keeping a drop‑in path.
+    - TLS: Disabled for app↔PgCat↔Postgres on the internal Docker network (`SSL Mode=Disable`).
+  - **Pooler (PgCat):**
+    - PgCat provides sharding‑aware, HA‑friendly pooling; start with a single DSN per database.
+    - Monitor with PgCat stats; add dashboards; alert on pool saturation and slow Postgres waits.
 - **Acceptance:** No “too many connections” incidents; stable P95 latencies under burst. — Pending
 
 ---
@@ -404,7 +405,7 @@ gantt
 - Security: OpenIddict, RBAC, audit logs, secrets rotation. — In progress (OpenIddict, RBAC in dev)
 - Reliability: Outbox, retries, idempotency, DLQ handling, tested restore. — Pending
 - Performance: P95/P99 budgets met; pool saturation < 80%; no “max connections” events. — Pending
-- Observability: Golden signals, actionable alerts, runbooks. — In progress (dashboards, metrics)
+- Observability: Golden signals, actionable alerts, runbooks. — In progress (dashboards, metrics surfaced in Hub)
 - UX/DX: Dashboard modules live; SDK/CLI quickstarts; sample apps working. — Pending
 
 ---
@@ -417,8 +418,8 @@ gantt
   - [ ] Add Alertmanager and SLO alert rules (availability, P95/P99, error rate, DLQ depth)
   - [ ] Add OpenTelemetry Collector and migrate prometheus-net to OTEL metrics where applicable
   - [ ] Ensure propagation headers across services (traces/correlation)
-  - [ ] Introduce DB pooler (PgBouncer or drop‑in replacement) and migrate services; add pool utilization dashboards
-  - [ ] Grafana dashboards for API, DB, RabbitMQ with alert panels
+  - [ ] Introduce DB pooler (PgCat) and migrate services; add pool utilization dashboards
+  - [ ] Grafana dashboards for API, DB, RabbitMQ with alert panels — embedded in TansuCloud.Hub
 - Phase 3 (Workflow MVP):
   - [ ] Commands/Events; consumers persisting runs/steps/logs
   - [ ] BFF consumes events and fans out via SignalR (tenant groups)
